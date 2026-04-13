@@ -213,7 +213,7 @@ export function PredictionChart({
   watermark,
 }: PredictionChartProps): ReactElement {
   const [data, setData] = useState<DataPoint[]>([])
-  const [series, setSeries] = useState<SeriesConfig[]>([])
+  const series = useMemo(() => providedSeries ?? [], [providedSeries])
   const [isClient, setIsClient] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(
     () => typeof document !== 'undefined'
@@ -651,22 +651,11 @@ export function PredictionChart({
       return
     }
 
-    if (providedSeries) {
-      setSeries(providedSeries)
-    }
-    else {
-      setSeries([])
-    }
-  }, [providedSeries, isClient])
-
-  useLayoutEffect(() => {
-    if (!isClient) {
-      return
-    }
-
     if (!providedData || providedData.length === 0) {
       dataSignatureRef.current = normalizedSignature
-      setData([])
+      queueMicrotask(() => {
+        setData([])
+      })
       lastDataUpdateTypeRef.current = 'reset'
       return
     }
@@ -784,7 +773,9 @@ export function PredictionChart({
   }, [providedData, normalizedSignature, isClient])
 
   useLayoutEffect(() => {
-    setHoveredAnnotationClusterId(null)
+    queueMicrotask(() => {
+      setHoveredAnnotationClusterId(null)
+    })
   }, [normalizedSignature, showAnnotations])
 
   useLayoutEffect(
@@ -809,18 +800,20 @@ export function PredictionChart({
     if (data.length === 0) {
       stopRevealAnimation(revealAnimationFrameRef)
       stopRevealAnimation(crossFadeFrameRef)
-      setRevealProgress(0)
-      setCrossFadeProgress(1)
-      setCrossFadeData(null)
       surgePendingRef.current = false
-      setSurgeActive(false)
-      setSurgeLengths({})
-      setRevealSeriesKeys((previousKeys) => {
-        if (previousKeys.length === 0) {
-          return previousKeys
-        }
+      queueMicrotask(() => {
+        setRevealProgress(0)
+        setCrossFadeProgress(1)
+        setCrossFadeData(null)
+        setSurgeActive(false)
+        setSurgeLengths({})
+        setRevealSeriesKeys((previousKeys) => {
+          if (previousKeys.length === 0) {
+            return previousKeys
+          }
 
-        return []
+          return []
+        })
       })
       previousSeriesKeysRef.current = series.map(item => item.key)
       lastDataUpdateTypeRef.current = 'reset'
@@ -839,12 +832,14 @@ export function PredictionChart({
     const shouldPartialReveal = seriesChanged && addedSeries.length > 0 && hasPreviousSeries
     const nextRevealSeries = currentSeriesKeys
 
-    setRevealSeriesKeys((previousKeys) => {
-      if (areSeriesKeyListsEqual(previousKeys, nextRevealSeries)) {
-        return previousKeys
-      }
+    queueMicrotask(() => {
+      setRevealSeriesKeys((previousKeys) => {
+        if (areSeriesKeyListsEqual(previousKeys, nextRevealSeries)) {
+          return previousKeys
+        }
 
-      return nextRevealSeries
+        return nextRevealSeries
+      })
     })
     previousSeriesKeysRef.current = currentSeriesKeys
     const shouldRunSurge = updateType === 'reset' && !disableResetAnimation
@@ -861,8 +856,10 @@ export function PredictionChart({
       hasPointerInteractionRef.current = false
       lastCursorProgressRef.current = 0
       stopRevealAnimation(revealAnimationFrameRef)
-      setRevealProgress(1)
-      setCrossFadeData(previousData)
+      queueMicrotask(() => {
+        setRevealProgress(1)
+        setCrossFadeData(previousData)
+      })
       runRevealAnimation({
         from: 0,
         to: 1,
@@ -873,8 +870,10 @@ export function PredictionChart({
     }
     else {
       stopRevealAnimation(crossFadeFrameRef)
-      setCrossFadeProgress(1)
-      setCrossFadeData(null)
+      queueMicrotask(() => {
+        setCrossFadeProgress(1)
+        setCrossFadeData(null)
+      })
 
       if (updateType === 'reset' && !disableResetAnimation) {
         hasPointerInteractionRef.current = false
@@ -889,7 +888,9 @@ export function PredictionChart({
       }
       else {
         stopRevealAnimation(revealAnimationFrameRef)
-        setRevealProgress(1)
+        queueMicrotask(() => {
+          setRevealProgress(1)
+        })
       }
     }
 
@@ -908,8 +909,6 @@ export function PredictionChart({
       setIsDarkMode(root.classList.contains('dark'))
     }
 
-    updateTheme()
-
     const observer = new MutationObserver(updateTheme)
     observer.observe(root, { attributes: true, attributeFilter: ['class'] })
 
@@ -918,7 +917,9 @@ export function PredictionChart({
 
   useLayoutEffect(() => {
     if (crossFadeData && crossFadeProgress >= 0.999) {
-      setCrossFadeData(null)
+      queueMicrotask(() => {
+        setCrossFadeData(null)
+      })
     }
   }, [crossFadeData, crossFadeProgress])
 
@@ -962,9 +963,10 @@ export function PredictionChart({
       return
     }
 
-    setSurgeLengths(nextLengths)
-
-    setSurgeActive(true)
+    queueMicrotask(() => {
+      setSurgeLengths(nextLengths)
+      setSurgeActive(true)
+    })
 
     if (surgeTimeoutRef.current) {
       window.clearTimeout(surgeTimeoutRef.current)
